@@ -1,0 +1,133 @@
+version: "2"
+services:
+    esnode1:
+        image: elasticsearch:7.13.3
+        container_name: esnode1
+        hostname: elasticsearch
+        environment:
+            - "node.name=esnode1"
+            - "cluster.name=es-docker-cluster"
+            - "discovery.seed_hosts=esnode2,esnode3"
+            - "cluster.initial_master_nodes=esnode1,esnode2,esnode3"
+            - "bootstrap.memory_lock=true"
+            - xpack.security.enabled:true
+            - "xpack.license.self_generated.type:basic"
+            - "xpack.monitoring.collection.enabled=true"
+            - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+            - "ES_CONNECT_RETRY=300"
+            - "ES_HEAP_SIZE=1g"
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        volumes:
+            - data01:/usr/share/elasticsearch/data
+        ports:
+            - 9200:9200
+            - 9300:9300
+        networks:
+            - elknetwork
+    esnode2:
+        image: elasticsearch:7.13.3
+        container_name: esnode2
+        hostname: elasticsearch
+        environment:
+            - "node.name=esnode2"
+            - "cluster.name=es-docker-cluster"
+            - "discovery.seed_hosts=esnode1,esnode3"
+            - "cluster.initial_master_nodes=esnode1,esnode2,esnode3"
+            - "bootstrap.memory_lock=true"
+            - xpack.security.enabled:true
+            - "xpack.license.self_generated.type:basic"
+            - "xpack.monitoring.collection.enabled=true"
+            - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+            - "ES_CONNECT_RETRY=300"
+            - "ES_HEAP_SIZE=1g"
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        volumes:
+           - data02:/usr/share/elasticsearch/data
+        ports:
+            - 9201:9201
+            - 9301:9301
+        networks:
+            - elknetwork
+    esnode3:
+        image: elasticsearch:7.13.3
+        container_name: esnode3
+        hostname: elasticsearch
+        environment:
+            - "node.name=esnode3"
+            - "cluster.name=es-docker-cluster"
+            - "discovery.seed_hosts=esnode1,esnode2"
+            - "cluster.initial_master_nodes=esnode1,esnode2,esnode3"
+            - "bootstrap.memory_lock=true"
+            - xpack.security.enabled:true
+            - "xpack.license.self_generated.type:basic"
+            - "xpack.monitoring.collection.enabled=true"
+            - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+            - "ES_CONNECT_RETRY=300"
+            - "ES_HEAP_SIZE=1g"
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        volumes:
+            - data03:/usr/share/elasticsearch/data
+        ports:
+            - 9202:9202
+            - 9302:9302
+        networks:
+            - elknetwork
+    kibana:
+        image: kibana:7.13.3
+        container_name: kibana
+        hostname: kibana
+        ports:
+            - 5601:5601
+        environment:
+            - "ELASTICSEARCH_URL=http://esnode1:9200"
+            - "ELASTICSEARCH_HOSTS=http://esnode1:9200"
+        links:
+            - esnode1:esnode1
+        depends_on:
+            - esnode1
+        networks:
+            - elknetwork
+    logstash:
+        image: logstash:7.13.3
+        container_name: logstash
+        hostname: logstash
+        environment:
+            - "LS_JAVA_OPTS=-Xms1g -Xmx1g"
+            - "xpack.monitoring.enabled=true"
+            - "path.config=/usr/share/logstash/pipeline"
+        ports:
+            - 9600:9600
+            - 8089:8089
+            - 12201:12201/tcp
+            - 514:514
+            - 5044:5044
+            - 5000:5000/tcp
+            - 5000:5000/udp
+            - 5014:5014
+            - 5014:5014/udp
+            - 514:514/udp
+        links:
+            - esnode1:esnode1
+        depends_on:
+            - esnode1
+        networks:
+            - elknetwork
+volumes:
+    data01:
+        driver: local
+    data02:
+        driver: local
+    data03:
+        driver: local
+networks:
+    elknetwork:
+        driver: bridge
